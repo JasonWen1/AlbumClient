@@ -26,7 +26,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class ApiClient {
+public class ApiClient implements Runnable{
   public final CloseableHttpClient httpClient;
 
   public final Gson gson = new Gson();
@@ -34,14 +34,42 @@ public class ApiClient {
   public static final AtomicInteger FAILED_REQ = new AtomicInteger(0);
   public String apiUrl;
 
+  public byte[] getImageData() {
+    return imageData;
+  }
+
+  public void setImageData(byte[] imageData) {
+    this.imageData = imageData;
+  }
+
+  public Profile getProfile() {
+    return profile;
+  }
+
+  public void setProfile(Profile profile) {
+    this.profile = profile;
+  }
+
+  public byte[] imageData;
+
+  public Profile profile;
+
   public static final ConcurrentLinkedQueue<Long> latencies1 = new ConcurrentLinkedQueue<>();
   public static final ConcurrentLinkedQueue<Long> latencies2 = new ConcurrentLinkedQueue<>();
 
-  public ApiClient(int maxTotal, int maxPerRoute) {
+  public ApiClient(int maxTotal, int maxPerRoute, byte[] imageData, Profile profile, String apiUrl) {
     PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
     cm.setMaxTotal(maxTotal);
     cm.setDefaultMaxPerRoute(maxPerRoute);
     this.httpClient = HttpClients.custom().setConnectionManager(cm).build();
+    this.imageData = imageData;
+    this.profile = profile;
+    this.apiUrl = apiUrl;
+  }
+
+  @Override
+  public void run() {
+    executeTask(imageData, profile);
   }
 
   public void setApiUrl(String apiUrl) {
@@ -49,9 +77,6 @@ public class ApiClient {
   }
 
   public void executeTask(byte[] imageData, Profile profile) {
-
-
-
       try {
         List<Long> latencies11 = new ArrayList<>();
         List<Long> latencies22 = new ArrayList<>();
@@ -127,7 +152,7 @@ public class ApiClient {
     }
   }
 
-  public void calculateAndDisplayStatistics(ConcurrentLinkedQueue<Long> latenciesQueue) {
+  public static void calculateAndDisplayStatistics(ConcurrentLinkedQueue<Long> latenciesQueue) {
 
 
     //System.out.println("Wall time: " + (System.currentTimeMillis() - startTime) * 0.001

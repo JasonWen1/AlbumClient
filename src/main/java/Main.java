@@ -16,10 +16,10 @@ public class Main {
     int delay = Integer.parseInt(args[2]);
     String apiUrl = args[3];
 
-
+  /*
     ApiClient client = new ApiClient(2000, 1000);
     client.setApiUrl(apiUrl);
-    byte[] imageData = ApiClient.convertImageToByteArray(System.getProperty("user.dir") + "/" + "nmtb.png");
+    byte[] imageData = Files.readAllBytes(Paths.get("src/main/resources/image.jpg"));
     //System.out.println(imageData.length);
     Profile profile = new Profile("John Doe", "abc", "2023");
     long startTime = System.currentTimeMillis();
@@ -47,5 +47,47 @@ public class Main {
     System.out.println("Statistics for GET request: ");
     client.calculateAndDisplayStatistics(client.latencies2);
     client.shutdown();
+    */
+    byte[] imageData = ApiClient.convertImageToByteArray(System.getProperty("user.dir") + "/" + "nmtb.png");
+    Profile profile = new Profile("John Doe", "abc", "2023");
+    long startTime = System.currentTimeMillis();
+    Thread[] threads = new Thread[numThreadGroups];
+    for (int i = 0; i < numThreadGroups; i++) {
+      threads[i] = new Thread(() -> {
+        Thread[] threads1 = new Thread[threadGroupSize];
+        for (int j = 0; j < threadGroupSize; j++) {
+          threads1[j] = new Thread(new ApiClient(2000, 1000, imageData, profile, apiUrl));
+          threads1[j].start();
+        }
+        try {
+          for (int j = 0; j < threadGroupSize; j++) {
+            threads1[j].join();
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      });
+      threads[i].start();
+      Thread.sleep(delay * 1000);
+    }
+
+    try {
+      for (int i = 0; i < numThreadGroups; i++) {
+        threads[i].join();
+      }
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    long endTime = System.currentTimeMillis();
+    System.out.println("Wall time: " + (endTime - startTime) * 0.001);
+    System.out.println("Successful requests: " + (2000 * threadGroupSize * numThreadGroups - ApiClient.FAILED_REQ.get()));
+    System.out.println("Failed requests: " + ApiClient.FAILED_REQ.get());
+    System.out.println("Throughput: " + (2000 * threadGroupSize * numThreadGroups - ApiClient.FAILED_REQ.get()) / ((endTime - startTime) * 0.001) + " req/s");
+    System.out.println("Statistics for POST request: ");
+    ApiClient.calculateAndDisplayStatistics(ApiClient.latencies1);
+    System.out.println();
+    System.out.println("Statistics for GET request: ");
+    ApiClient.calculateAndDisplayStatistics(ApiClient.latencies2);
   }
 }
